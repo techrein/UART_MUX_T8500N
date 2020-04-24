@@ -15,7 +15,8 @@
 bit Write1Full_flg = 0, Write2Full_flg = 0, Write3Full_flg = 0, Write4Full_flg = 0;
 bit FirstData_flg = 1;
 bit uart1_TX_flag = 0;
-bit Read1Full_flg = 0, Read2Full_flg = 0, Read3Full_flg = 0, Read4Full_flg = 0, ReadNFull_flg, ReadSFull_flg = 0;
+bit Read1Full_flg = 0, Read2Full_flg = 0, Read3Full_flg = 0, Read4Full_flg = 0, ReadNFull_flg, ReadSFull_flg = 0, Uart1Full_flg = 0;
+unsigned char  SpecialCH_flg = 0;
 
 xdata unsigned char   Uart1TXBuff[WriteData_MAX] = 0;
 xdata unsigned char   Uart1TXPauseBuff[PauseData_MAX] = 0;
@@ -65,8 +66,8 @@ void Serial_ISR(void) interrupt 4   /*UART0*/
     if (RI) /* 0 --> 1,2,3,4 */
     {
 
-				Receive0_delayCnt = 0;
-				Receive0_delayFlg = 1;
+				Receive0_delayCnt = Delay_MAX-1;
+
 			  if(FirstData_flg)
 				{
 					if((Scan_CH[0] == Scan_CH[1]) || (Scan_CH[0] == Scan_CH[2]))
@@ -89,20 +90,18 @@ void Serial_ISR(void) interrupt 4   /*UART0*/
 							SFRS=0;
 							Uart1TXBuff[Write1Data] = SBUF;
 							
-							Write1Data = (++Write1Data) % WriteData_MAX;			
+							Write1Data = (++Write1Data) & (WriteData_MAX - 1);
 							
 							if(Write1Data == Read1Data) 
 							{
 								Write1Full_flg = 1;
+								UART1_Blocking_LedON;
 							}
 							else if(!uart1_TX_flag)
 							{
 								set_SCON_1_TI_1;
 							}
 						}
-
-//						P01 = 1;
-//						P05 = 1;
 
 					break;
 						
@@ -111,21 +110,19 @@ void Serial_ISR(void) interrupt 4   /*UART0*/
 						{				
 							SFRS=0;
 							Uart2TXBuff[Write2Data] = SBUF;
-							set_SC0IE_TBEIEN;
-							SFRS=0;
+
 							
-							Write2Data = (++Write2Data) % WriteData_MAX;
+							Write2Data = (++Write2Data) & (WriteData_MAX - 1);
 							
 							if(Write2Data == Read2Data) // Buffer Full?? 
 							{
 								Write2Full_flg = 1;
+								UART2_Blocking_LedON;
 							}
-
+							
+							set_SC0IE_TBEIEN;
+							SFRS=0;
 						}
-				
-//						P01 = 1;
-//						P05 = 0;						
-
 					break;
 				
 					case CH_3:
@@ -133,21 +130,18 @@ void Serial_ISR(void) interrupt 4   /*UART0*/
 						{					
 							SFRS=0;
 							Uart3TXBuff[Write3Data] = SBUF;
-
-							set_SC1IE_TBEIEN;
-							SFRS=0;
 											
-							Write3Data = (++Write3Data) % WriteData_MAX;
+							Write3Data = (++Write3Data) & (WriteData_MAX - 1);
 							
-							if(Write3Data == Read3Data) // Buffer Full?? //
+							if(Write3Data == Read3Data) // Buffer Full?? 
 							{
 								Write3Full_flg = 1;
+								UART3_Blocking_LedON;
 							}	
-					
+							set_SC1IE_TBEIEN;
+							SFRS=0;					
 						}	
-					
-//						P01 = 0;
-//						P05 = 1;					
+
 					break;
 
 				case CH_4:					
@@ -155,22 +149,19 @@ void Serial_ISR(void) interrupt 4   /*UART0*/
 						{					
 							SFRS=0;
 							Uart4TXBuff[Write4Data] = SBUF;
-
-							set_SC2IE_TBEIEN;
-							SFRS=0;
-											
-							Write4Data = (++Write4Data) % WriteData_MAX;
+								
+							Write4Data = (++Write4Data) & (WriteData_MAX - 1);
 							
 							if(Write4Data == Read4Data) // Buffer Full?? 
 							{
 								Write4Full_flg = 1;
+								UART4_Blocking_LedON;
 							}	
 							
+							set_SC2IE_TBEIEN;
+							SFRS=0;							
 						}		
 			
-//						P01 = 0;
-//						P05 = 0;					
-				
 				break;
 			}
 				
@@ -185,30 +176,31 @@ void Serial_ISR(void) interrupt 4   /*UART0*/
     {
 			clr_SCON_TI;	
 
-			if(!Pause0Flg)
+			if(Pause0Cnt == Pause_MAX)
 			{
-				Pause0Cnt = 0;
 				
-				if((ReadCNT==0)&&(UartSBuff[TopReadData] != 0)) /*UART_4*/
+				if(SpecialCH_flg &&(ReadCNT==0)&&(UartSBuff[TopReadData] != 0)) /*UART_1*/
 				{
+					
 						if(ReadTopCNT	< UartSBuff[TopReadData])
 						{
-//							P35 = 0;
+							
 							ReadTopCNT++;
 							SFRS = 0;
-							SBUF = Uart4RXBuff[RX4ReadData];		
-							RX4ReadData = (++RX4ReadData) % ReadData_MAX; 				
-							Read4Full_flg = 0;
+							SBUF = Uart1RXBuff[RX1ReadData];		
+							RX1ReadData = (++RX1ReadData) & (ReadData_MAX - 1);		
+							Read1Full_flg = 0;
+							UART1_Blocking_LedOFF;
 						}
 						else if(ReadTopCNT == UartSBuff[TopReadData])
 						{
 							ReadTopCNT = 0;
 							UartSBuff[TopReadData] = 0;
-							TopReadData = (++TopReadData) % UartSData_MAX;
+							TopReadData = (++TopReadData) & (UartSData_MAX - 1);
 
 							ReadSFull_flg = 0;
-							Pause0Flg = 1;
-							
+							UART0_Blocking_LedOFF;
+							Pause0Cnt = Pause_MAX - 1;
 						}						
 				}
 				else
@@ -220,26 +212,28 @@ void Serial_ISR(void) interrupt 4   /*UART0*/
 						break;
 						
 						case UART_1:
-
-							if(ReadCNT	< UartNBuff[PosiReadData][1])
+							if(!SpecialCH_flg)
 							{
-								ReadCNT++;
-								
-								SFRS = 0;
-								SBUF = Uart1RXBuff[RX1ReadData];		
-								RX1ReadData = (++RX1ReadData) % ReadData_MAX; 				
-								Read1Full_flg = 0;
-								
-							}
-							else if(ReadCNT == UartNBuff[PosiReadData][1])
-							{
-								ReadCNT = 0;
-								UartNBuff[PosiReadData][0] = 0;
-								PosiReadData = (++PosiReadData) % UartNData_MAX;
+								if(ReadCNT	< UartNBuff[PosiReadData][1])
+								{
+									ReadCNT++;
+									
+									SFRS = 0;
+									SBUF = Uart1RXBuff[RX1ReadData];		
+									RX1ReadData = (++RX1ReadData) & (ReadData_MAX - 1);				
+									Read1Full_flg = 0;
+									UART1_Blocking_LedOFF;
+								}
+								else if(ReadCNT == UartNBuff[PosiReadData][1])
+								{
+									ReadCNT = 0;
+									UartNBuff[PosiReadData][0] = 0;
+									PosiReadData = (++PosiReadData) & (UartNData_MAX - 1);
 
-								ReadNFull_flg = 0;
-								Pause0Flg = 1;
-						
+									ReadNFull_flg = 0;
+									UART0_Blocking_LedOFF;
+									Pause0Cnt = Pause_MAX - 1;
+								}
 							}
 						break;
 							
@@ -250,18 +244,19 @@ void Serial_ISR(void) interrupt 4   /*UART0*/
 								ReadCNT++;
 								SFRS = 0;
 								SBUF = Uart2RXBuff[RX2ReadData];		
-								RX2ReadData = (++RX2ReadData) % ReadData_MAX; 				
+								RX2ReadData = (++RX2ReadData) & (ReadData_MAX - 1); 				
 								Read2Full_flg = 0;
+								UART2_Blocking_LedOFF;
 							}
 							else if(ReadCNT == UartNBuff[PosiReadData][1])
 							{
 								ReadCNT = 0;
 								UartNBuff[PosiReadData][0] = 0;
-								PosiReadData = (++PosiReadData) % UartNData_MAX;
+								PosiReadData = (++PosiReadData) & (UartNData_MAX - 1);
 
 								ReadNFull_flg = 0;
-								Pause0Flg = 1;
-								
+								UART0_Blocking_LedOFF;
+								Pause0Cnt = Pause_MAX - 1;
 							}						
 						break;
 							
@@ -272,79 +267,93 @@ void Serial_ISR(void) interrupt 4   /*UART0*/
 								ReadCNT++;
 								SFRS = 0;
 								SBUF = Uart3RXBuff[RX3ReadData];		
-								RX3ReadData = (++RX3ReadData) % ReadData_MAX; 				
+								RX3ReadData = (++RX3ReadData) & (ReadData_MAX - 1);		
 								Read3Full_flg = 0;
+								UART3_Blocking_LedOFF;
 							}
 							else if(ReadCNT == UartNBuff[PosiReadData][1])
 							{
 								ReadCNT = 0;
 								UartNBuff[PosiReadData][0] = 0;
-								PosiReadData = (++PosiReadData) % UartNData_MAX;
+								PosiReadData = (++PosiReadData) & (UartNData_MAX - 1);
 								
 								ReadNFull_flg = 0;
-								Pause0Flg = 1;
-				
+								UART0_Blocking_LedOFF;
+								Pause0Cnt = Pause_MAX - 1;
 							}						
 						break;
 
-		/*				case UART_4:
-				
+						case UART_4:
+
 							if(ReadCNT	< UartNBuff[PosiReadData][1])
 							{
 								ReadCNT++;
 								SFRS = 0;
 								SBUF = Uart4RXBuff[RX4ReadData];		
-								RX4ReadData = (++RX4ReadData) % ReadData_MAX; 				
+								RX4ReadData = (++RX4ReadData) & (ReadData_MAX - 1); 				
 								Read4Full_flg = 0;
+								UART4_Blocking_LedOFF;
 							}
 							else if(ReadCNT == UartNBuff[PosiReadData][1])
 							{
 								ReadCNT = 0;
 								UartNBuff[PosiReadData][0] = 0;
-								PosiReadData = (++PosiReadData) % UartNData_MAX;
+								PosiReadData = (++PosiReadData) & (UartNData_MAX - 1);
 
 								ReadNFull_flg = 0;
-								Pause0Flg = 1;
-				
-							}						
-						break;				*/		
+								UART0_Blocking_LedOFF;
+								Pause0Cnt = Pause_MAX - 1;
+							}		
+						break;						
 					}
 				}
 			}
 		}
 
     _pop_(SFRS);
+
 }	
 
 
 
 void SerialPort1_ISR(void) interrupt 15			/*UART1*/
 {
+
     _push_(SFRS);
 		SFRS=0;
+			
     if (RI_1 == 1)
     {
-			Receive1_delayCnt = 0;
-			Receive1_delayFlg = 1;
-
-				if((!Read1Full_flg)&&(!ReadNFull_flg))
+			Receive1_delayCnt = Delay_MAX-1;
+			
+	    if(SpecialCH_flg) 
+			{
+				Uart1Full_flg = ReadSFull_flg;
+				
+			}
+			else
+			{
+				Uart1Full_flg = ReadNFull_flg;
+			}
+			
+			if((!Read1Full_flg)&&(!Uart1Full_flg))
+			{
+				SFRS=0;
+				Uart1RXBuff[RX1WriteData] = SBUF_1;
+				RX1WriteData = (++RX1WriteData) & (ReadData_MAX - 1);
+				
+				RX1Length = (++RX1Length) & (Length_MAX - 1);
+				
+				if((RX1WriteData == RX1ReadData) || (RX1Length == 0))
 				{
-					SFRS=0;
-					Uart1RXBuff[RX1WriteData] = SBUF_1;
-					RX1WriteData = (++RX1WriteData) % ReadData_MAX;
-					
-					RX1Length = (++RX1Length) % Length_MAX;
-					
-					if((RX1WriteData == RX1ReadData) || (RX1Length == 0))
+					Read1Full_flg = 1;
+					if(!RX1Length) 
 					{
-						Read1Full_flg = 1;
-						if(!RX1Length) 
-						{
-							RX1Length = Length_MAX;
-						}
-						
+						RX1Length = Length_MAX;
 					}
+					UART1_Blocking_LedON;
 				}
+			}
 
 			clr_SCON_1_RI_1;                             /* clear reception flag for next reception */
 		
@@ -354,52 +363,52 @@ void SerialPort1_ISR(void) interrupt 15			/*UART1*/
     {
 			uart1_TX_flag = 0;
 			clr_SCON_1_TI_1;			
-			if((Write1Pause != Read1Pause)&&(!Pause1Flg))
+			if((Write1Pause != Read1Pause)&&(Pause1Cnt == Pause_MAX))
 			{
 				if(Uart1TXPauseBuff[Read1Pause] == Read1Data)
 				{
-					Read1Pause = (++Read1Pause) % PauseData_MAX;
+					Read1Pause = (++Read1Pause) & (PauseData_MAX - 1);
 					
-					Pause1Cnt = 0;
-					Pause1Flg = 1;
-					
+					Pause1Cnt = Pause_MAX-1;
 				}
 
 			}
 
-			if((Write1Full_flg || (Read1Data != Write1Data))&&(!Pause1Flg))
+			if((Write1Full_flg || (Read1Data != Write1Data))&&(Pause1Cnt == Pause_MAX))
 			{
 				uart1_TX_flag = 1;
 				SFRS = 0;
 				SBUF_1 = Uart1TXBuff[Read1Data];
 
-				Read1Data = (++Read1Data) % WriteData_MAX;
+				Read1Data = (++Read1Data) & (WriteData_MAX - 1);
 				
 				Write1Full_flg = 0;
+				UART1_Blocking_LedOFF;
 			}			
 			
     }
 		
     _pop_(SFRS);
+
 }	
 
 void SMC0_ISR(void) interrupt 21          // Vector @  0x9B  /*UART2*/
 {
-			
+				
     _push_(SFRS);
 		SFRS = 2;
 	 if(SC0IS&0x01)
-	 {
-			Receive2_delayCnt = 0;
-			Receive2_delayFlg = 1;	
+	 {		
+		 
+			Receive2_delayCnt = Delay_MAX-1;
 		 
 			if((!Read2Full_flg)&&(!ReadNFull_flg))
 			{
 				SFRS=2;
 				Uart2RXBuff[RX2WriteData] = SC0DR;
-				RX2WriteData = (++RX2WriteData) % ReadData_MAX;
+				RX2WriteData = (++RX2WriteData) & (ReadData_MAX - 1);
 				
-				RX2Length = (++RX2Length) % Length_MAX;
+				RX2Length = (++RX2Length) & (Length_MAX - 1);
 				
 				if((RX2WriteData == RX2ReadData) || (RX2Length == 0))
 				{
@@ -409,6 +418,7 @@ void SMC0_ISR(void) interrupt 21          // Vector @  0x9B  /*UART2*/
 					{
 						RX2Length = Length_MAX;
 					}
+					UART2_Blocking_LedON;
 				}
 			}
 			else
@@ -416,34 +426,36 @@ void SMC0_ISR(void) interrupt 21          // Vector @  0x9B  /*UART2*/
 				SFRS=2;		
 				Blocking_data = SC0DR;			 
 			}				
-
+			
 		}
 	 
 		if(SC0IS&0x02)
 		{
+				
 			clr_SC0CR0_TXOFF;	
 			clr_SC0IE_TBEIEN;
 			
-			if((Write2Pause != Read2Pause)&&(!Pause2Flg))
+			if((Write2Pause != Read2Pause)&&(Pause2Cnt == Pause_MAX))
 			{
 				if(Uart2TXPauseBuff[Read2Pause] == Read2Data)
 				{
-					Read2Pause = (++Read2Pause) % PauseData_MAX;
+					Read2Pause = (++Read2Pause) & (PauseData_MAX - 1);
 					
-					Pause2Cnt = 0;
-					Pause2Flg = 1;
+					Pause2Cnt = Pause_MAX-1;
+
 				}
 				set_SC0IE_TBEIEN;
 			}
 			
-			if((Write2Full_flg || (Read2Data != Write2Data))&&(!Pause2Flg))
+			if((Write2Full_flg || (Read2Data != Write2Data))&&(Pause2Cnt == Pause_MAX))
 			{
 				
 				SFRS=2;
 				SC0DR = Uart2TXBuff[Read2Data];
-				Read2Data = (++Read2Data) % WriteData_MAX;
+				Read2Data = (++Read2Data) & (WriteData_MAX - 1);
 				
 				Write2Full_flg = 0;
+				UART2_Blocking_LedOFF;
 				set_SC0IE_TBEIEN;
 			}
 			
@@ -452,7 +464,7 @@ void SMC0_ISR(void) interrupt 21          // Vector @  0x9B  /*UART2*/
 		SFRS = 0;
     _pop_(SFRS);
 		
-	
+
 }
 
 
@@ -464,16 +476,15 @@ void SMC1_ISR(void) interrupt 22          // Vector @  0x9B  /*UART3*/
 
 		if(SC1IS&0x01)
 		{
-			Receive3_delayCnt = 0;
-			Receive3_delayFlg = 1;
+			Receive3_delayCnt = Delay_MAX-1;
 	
 			if((!Read3Full_flg)&&(!ReadNFull_flg))
 			{
 				SFRS=2;
 				Uart3RXBuff[RX3WriteData] = SC1DR;
-				RX3WriteData = (++RX3WriteData) % ReadData_MAX;
+				RX3WriteData = (++RX3WriteData) & (ReadData_MAX - 1);
 				
-				RX3Length = (++RX3Length) % Length_MAX;
+				RX3Length = (++RX3Length) & (Length_MAX - 1);
 				
 				if((RX3WriteData == RX3ReadData) || (RX3Length == 0))
 				{
@@ -481,8 +492,9 @@ void SMC1_ISR(void) interrupt 22          // Vector @  0x9B  /*UART3*/
 
 					if(!RX3Length)
 					{
-						RX3Length = Length_MAX;//-1;
+						RX3Length = Length_MAX;
 					}
+					UART3_Blocking_LedON;
 				}
 			}
 			else
@@ -497,27 +509,26 @@ void SMC1_ISR(void) interrupt 22          // Vector @  0x9B  /*UART3*/
 		{
 			clr_SC1CR0_TXOFF;	
 			clr_SC1IE_TBEIEN;
-			if((Write3Pause != Read3Pause)&&(!Pause3Flg))
+			if((Write3Pause != Read3Pause)&&(Pause3Cnt == Pause_MAX))
 			{
 				if(Uart3TXPauseBuff[Read3Pause] == Read3Data)
 				{
-					Read3Pause = (++Read3Pause) % PauseData_MAX;
+					Read3Pause = (++Read3Pause) & (PauseData_MAX - 1);
 					
-					Pause3Cnt = 0;
-					Pause3Flg = 1;
-
+					Pause3Cnt = Pause_MAX-1;
 				}
 				set_SC1IE_TBEIEN;
 			}
 			
-			if((Write3Full_flg || (Read3Data != Write3Data))&&(!Pause3Flg))
+			if((Write3Full_flg || (Read3Data != Write3Data))&&(Pause3Cnt == Pause_MAX))
 			{
 
 				SFRS=2;
 				SC1DR = Uart3TXBuff[Read3Data];				
-				Read3Data = (++Read3Data) % WriteData_MAX;
+				Read3Data = (++Read3Data) & (WriteData_MAX - 1);
 				
 				Write3Full_flg = 0;
+				UART3_Blocking_LedOFF;
 				set_SC1IE_TBEIEN;
 			}
 		}
@@ -529,21 +540,21 @@ void SMC1_ISR(void) interrupt 22          // Vector @  0x9B  /*UART3*/
 
 void SMC2_ISR(void) interrupt 23          // Vector @  0x9B /*UART4*/
 {
+	
     _push_(SFRS);
 		SFRS=2;
  /* Since only enable receive interrupt, not add flag check */
 		if(SC2IS&0x01)
 		{	
-			Receive4_delayCnt = 0;
-			Receive4_delayFlg = 1;	
-	 
-			if((!Read4Full_flg)&&(!ReadSFull_flg))
+			Receive4_delayCnt = Delay_MAX - 1;
+	
+			if((!Read4Full_flg)&&(!ReadNFull_flg))
 			{
 				SFRS=2;
 				Uart4RXBuff[RX4WriteData] = SC2DR;
-				RX4WriteData = (++RX4WriteData) % ReadData_MAX;
+				RX4WriteData = (++RX4WriteData) & (ReadData_MAX - 1);
 				
-				RX4Length = (++RX4Length) % Length_MAX;
+				RX4Length = (++RX4Length) & (Length_MAX - 1);
 				
 				if((RX4WriteData == RX4ReadData) || (RX4Length == 0))
 				{
@@ -551,8 +562,9 @@ void SMC2_ISR(void) interrupt 23          // Vector @  0x9B /*UART4*/
 
 					if(!RX4Length)
 					{
-						RX4Length = Length_MAX;//-1;
+						RX4Length = Length_MAX;
 					}
+					UART4_Blocking_LedON;
 				}
 			}
 			else
@@ -567,31 +579,33 @@ void SMC2_ISR(void) interrupt 23          // Vector @  0x9B /*UART4*/
 		{
 			clr_SC2CR0_TXOFF;	
 			clr_SC2IE_TBEIEN;
-			if((Write4Pause != Read4Pause)&&(!Pause4Flg))
+			if((Write4Pause != Read4Pause)&&(Pause4Cnt == Pause_MAX))
 			{
 				if(Uart4TXPauseBuff[Read4Pause] == Read4Data)
 				{
-					Read4Pause = (++Read4Pause) % PauseData_MAX;
+					Read4Pause = (++Read4Pause) & (PauseData_MAX - 1);
 					
-					Pause4Cnt = 0;
-					Pause4Flg = 1;
+					Pause4Cnt = Pause_MAX-1;
+					
 				}
 				set_SC2IE_TBEIEN;
 			}
 			
-			if((Write4Full_flg || (Read4Data != Write4Data))&&(!Pause4Flg))
+			if((Write4Full_flg || (Read4Data != Write4Data))&&(Pause4Cnt == Pause_MAX))
 			{
 				SFRS=2;
 				SC2DR = Uart4TXBuff[Read4Data];					
-				Read4Data = (++Read4Data) % WriteData_MAX; 
+				Read4Data = (++Read4Data) & (WriteData_MAX - 1);
 				
 				Write4Full_flg = 0;
+				UART4_Blocking_LedOFF;
 				set_SC2IE_TBEIEN;				
 			} 
 		}
 		
 		SFRS = 0;
     _pop_(SFRS);
+	
 }
 
 

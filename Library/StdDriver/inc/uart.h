@@ -5,8 +5,8 @@
 #define UART1 1
 
 
-#define Delay_MAX				4
-#define	Pause_MAX				4
+#define Delay_MAX				9//4
+#define	Pause_MAX				9//4
 
 
 #define WriteData_MAX 	128
@@ -27,8 +27,8 @@
 #define UART2_Blocking_LedON				P12 = 0
 #define UART2_Blocking_LedOFF				P12 = 1
 
-#define UART3_Blocking_LedON				P01 = 0//P11 = 0
-#define UART3_Blocking_LedOFF				P01 = 1//P11 = 1
+#define UART3_Blocking_LedON				P01 = 0
+#define UART3_Blocking_LedOFF				P01 = 1
 
 #define UART4_Blocking_LedON				P33 = 0
 #define UART4_Blocking_LedOFF				P33 = 1
@@ -47,20 +47,23 @@
 #define CH_3		3
 #define CH_4		4
 
-#define LEVLE_1 0x3F
-#define LEVLE_2 0x7E
-#define LEVLE_3 0xBD
+#define LEVLE_1 0x1F
+#define LEVLE_2 0x5E
+#define LEVLE_3 0x97
+#define LEVLE_4 0xD5
 
 #define BaudRate_9600 	9600
 #define BaudRate_19200 	19200
 #define BaudRate_38400 	38400
 #define BaudRate_57600 	57600
+#define BaudRate_115200 	115200
 
 
 extern 	 bit Write1Full_flg, Write2Full_flg, Write3Full_flg, Write4Full_flg;
 extern 	 bit FirstData_flg;
 extern   bit uart1_TX_flag;
-extern 	 bit Read1Full_flg, Read2Full_flg, Read3Full_flg, Read4Full_flg, ReadNFull_flg, ReadSFull_flg;
+extern 	 bit Read1Full_flg, Read2Full_flg, Read3Full_flg, Read4Full_flg, ReadNFull_flg, ReadSFull_flg, Uart1Full_flg;
+extern 	 unsigned char  SpecialCH_flg;
 
 extern   unsigned int ReadCNT;	
 extern   xdata unsigned int ReadTopCNT;

@@ -8,13 +8,14 @@ void Timer2_Delay500us(unsigned int u8CNT);
 /* if define TIMER0_FSYS, timer = (0xFFFF-0x1000)/24MHz = 2.548ms */
 /* if define TIMER0_FSYS, timer = (0xFFFF-0xF82F)/24MHz = 1ms */
 /* if define TIMER0_FSYS, timer = (0xFFFF-0xFC17)/24MHz = 0.5ms */
-#define TH0_INIT        0xFC//F8//0x10 
-#define TL0_INIT        0x17//2F//0x00
+/* if define TIMER0_FSYS, timer = (0xFFFF-0xFE0B)/24MHz = 0.25ms */
+#define TH0_INIT        0xFE//FC//F8//0x10 
+#define TL0_INIT        0x0B//17//2F//0x00
 
 
 
-extern bit Receive0_delayFlg, Receive1_delayFlg, Receive2_delayFlg, Receive3_delayFlg, Receive4_delayFlg;
-extern	bit Pause0Flg, Pause1Flg, Pause2Flg, Pause3Flg, Pause4Flg;
+/*extern bit Receive0_delayFlg, Receive1_delayFlg, Receive2_delayFlg, Receive3_delayFlg, Receive4_delayFlg;*/
+/*extern	bit Pause0Flg, Pause1Flg, Pause2Flg, Pause3Flg, Pause4Flg;*/
 
 extern	unsigned char 	Pause0Cnt, Pause1Cnt, Pause2Cnt, Pause3Cnt, Pause4Cnt;
 extern  unsigned char 	Receive0_delayCnt, Receive1_delayCnt, Receive2_delayCnt, Receive3_delayCnt, Receive4_delayCnt;

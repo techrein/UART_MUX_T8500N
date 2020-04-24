@@ -18,6 +18,7 @@
 /************************************************************************************************************/
 /*  Main function                                                                                           */
 /************************************************************************************************************/
+#if 0
 void Buffer_Full_Check(void)
 {
 		/*UART0 Read flg ---  UART1 Read flg*/
@@ -70,13 +71,14 @@ void Buffer_Full_Check(void)
 			UART0_Blocking_LedOFF;
 		}
 }
+#endif
 
 void BaudRate_Select(void)
 {
 	unsigned char  i;
 	xdata unsigned int	 temp[3]; 
 
-	/*ADC LEVEL:  3.3K / 6.8K ---  0x00(0V) / 0x53(1.6V) / 0xAC(3.36V) / 0xF4(4.96V) */
+	/*ADC LEVEL:  10K/OPEN --- 0x00(0V),  3.3K/10K ---  0x3F(1.2V),  10K/10K ---  0x7F(2.5V),  10K/3.3K ---  0xAF(3.36V),  OPEN/10K ---  0xFC(4.96V) */
 	ENABLE_ADC_CH4;  /* UART0 */
 	for(i=0; i<3; i++)
 	{
@@ -88,23 +90,28 @@ void BaudRate_Select(void)
 	}
 	temp[0] = (temp[0]+temp[1]+temp[2])/3;
 	
-	if(temp[0] < LEVLE_1)//20)
+	if(temp[0] < LEVLE_1)
 	{
 		UART_Open(24000000, UART0_Timer1, BaudRate_9600);
 	}
-	else if(temp[0] < LEVLE_2)//73)
+	else if(temp[0] < LEVLE_2)
 	{
 		UART_Open(24000000, UART0_Timer1, BaudRate_19200);
-	}
-	else if(temp[0] < LEVLE_3)//cc)
+	}	
+	else if(temp[0] < LEVLE_3)
 	{
 		UART_Open(24000000, UART0_Timer1, BaudRate_38400);
-	}
-	else
+	}	
+	else if(temp[0] < LEVLE_4)
 	{
 		UART_Open(24000000, UART0_Timer1, BaudRate_57600);
+	}		
+	else
+	{
+		UART_Open(24000000, UART0_Timer1, BaudRate_115200);
 	}
 
+	
 	ENABLE_ADC_CH7;  /* UART1 */
 	for(i=0; i<3; i++)
 	{
@@ -120,19 +127,12 @@ void BaudRate_Select(void)
 	{
 		UART_Open(24000000, UART1_Timer3, BaudRate_9600);
 	}
-	else if(temp[0] < LEVLE_2)
-	{
-		UART_Open(24000000, UART1_Timer3, BaudRate_19200);
-	}
-	else if(temp[0] < LEVLE_3)
-	{
-		UART_Open(24000000, UART1_Timer3, BaudRate_38400);
-	}
 	else
 	{
-		UART_Open(24000000, UART1_Timer3, BaudRate_57600);
+		UART_Open(24000000, UART1_Timer3, BaudRate_19200);
 	}				
 
+	
 	ENABLE_ADC_CH13; /* UART2 */
 	for(i=0; i<3; i++)
 	{
@@ -148,19 +148,12 @@ void BaudRate_Select(void)
 	{
 		UART2_Open(24000000,BaudRate_9600); 
 	}
-	else if(temp[0] < LEVLE_2)
-	{
-		UART2_Open(24000000,BaudRate_19200); 
-	}
-	else if(temp[0] < LEVLE_3)
-	{
-		UART2_Open(24000000,BaudRate_38400); 
-	}
 	else
 	{
-		UART2_Open(24000000,BaudRate_57600); 
+		UART2_Open(24000000,BaudRate_19200);
 	}	
 	
+
 	ENABLE_ADC_CH14; /* UART3 */
 	for(i=0; i<3; i++)
 	{
@@ -176,19 +169,12 @@ void BaudRate_Select(void)
 	{
 		UART3_Open(24000000,BaudRate_9600); 
 	}
-	else if(temp[0] < LEVLE_2)
-	{
-		UART3_Open(24000000,BaudRate_19200); 
-	}
-	else if(temp[0] < LEVLE_3)
-	{
-		UART3_Open(24000000,BaudRate_38400); 
-	}
 	else
 	{
-		UART3_Open(24000000,BaudRate_57600); 
+		UART3_Open(24000000,BaudRate_19200); 
 	}	
 	
+ 
 	ENABLE_ADC_CH12;  /* UART4 */
 	for(i=0; i<3; i++)
 	{
@@ -204,19 +190,24 @@ void BaudRate_Select(void)
 	{
 		UART4_Open(24000000,BaudRate_9600); 
 	}
-	else if(temp[0] < LEVLE_2)
-	{
-		UART4_Open(24000000,BaudRate_19200); 
-	}
-	else if(temp[0] < LEVLE_3)
-	{
-		UART4_Open(24000000,BaudRate_38400); 
-	}
 	else
 	{
-		UART4_Open(24000000,BaudRate_57600); 
+		UART4_Open(24000000,BaudRate_19200);
 	}	
+}
+
+void SpecialCH_Select(void)
+{
+	unsigned char  i, Special = 0, Specialflg = 0;
+ 
+	for(i=0; i<3; i++)
+	{
+		Specialflg = P34;
+		Special += Specialflg;
+		Timer2_Delay500us(4);
+	}
 	
+	SpecialCH_flg = Special >> 1;
 }
 
 void Buff_Init(void)
@@ -261,7 +252,7 @@ void Buff_Init(void)
 
  void main(void)
 {
-
+	
 	MODIFY_HIRC(HIRC_24); 	
 	
 /* 	GPIO MODE SETTING */
@@ -322,6 +313,7 @@ void Buff_Init(void)
 	BaudRate_Select();
 	Buff_Init();
 	FirstData_flg = 1;
+	SpecialCH_Select();
 	
 	ENABLE_UART0_INTERRUPT;                                   /* Enable UART0 interrupt */
 	ENABLE_UART1_INTERRUPT;                 //For interrupt enable , interrupt subroutine is in uart.c file	
@@ -351,8 +343,9 @@ void Buff_Init(void)
 	SFRS=0;
   ENABLE_GLOBAL_INTERRUPT;                                 /* Global interrupt enable */
 	
+	
 	while(1)
   {
-		Buffer_Full_Check();
+/*		Buffer_Full_Check(); */
 	}
 }

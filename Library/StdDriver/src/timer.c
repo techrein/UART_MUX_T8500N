@@ -11,11 +11,11 @@
 /***********************************************************************************************************/
 #include "MS51_32K.h"
 
-bit Receive0_delayFlg = 0, Receive1_delayFlg = 0, Receive2_delayFlg = 0, Receive3_delayFlg = 0, Receive4_delayFlg = 0;
-bit Pause0Flg = 0, Pause1Flg = 0, Pause2Flg = 0, Pause3Flg = 0, Pause4Flg  = 0;
+/*bit Receive0_delayFlg = 0, Receive1_delayFlg = 0, Receive2_delayFlg = 0, Receive3_delayFlg = 0, Receive4_delayFlg = 0;*/
+/*bit Pause0Flg = 0, Pause1Flg = 0, Pause2Flg = 0, Pause3Flg = 0, Pause4Flg  = 0;*/
 
-unsigned char Receive0_delayCnt = 0, Receive1_delayCnt = 0, Receive2_delayCnt = 0, Receive3_delayCnt = 0, Receive4_delayCnt = 0;
-unsigned char Pause0Cnt = 0, Pause1Cnt = 0, Pause2Cnt = 0, Pause3Cnt = 0, Pause4Cnt = 0;
+unsigned char Receive0_delayCnt = Delay_MAX, Receive1_delayCnt = Delay_MAX, Receive2_delayCnt = Delay_MAX, Receive3_delayCnt = Delay_MAX, Receive4_delayCnt = Delay_MAX;
+unsigned char Pause0Cnt = Pause_MAX, Pause1Cnt = Pause_MAX, Pause2Cnt = Pause_MAX, Pause3Cnt = Pause_MAX, Pause4Cnt = Pause_MAX;
 
 
 void Channel_Scan(void)
@@ -33,8 +33,9 @@ void Channel_Scan(void)
 *    TIMER 0 interrupt subroutine
 ************************************************************************************************************/
 
-void Timer0_ISR (void) interrupt 1  //interrupt address is 0x000B  /* 500us Timer */
+void Timer0_ISR (void) interrupt 1  //interrupt address is 0x000B  /* 250us Timer */
 {
+
     _push_(SFRS);
  		SFRS = 0;
 	
@@ -42,111 +43,172 @@ void Timer0_ISR (void) interrupt 1  //interrupt address is 0x000B  /* 500us Time
     TL0 = TL0_INIT;    
     TF0 = 0;
 		
-		if(Receive0_delayFlg) 
+		if(Receive0_delayCnt < Delay_MAX)
 		{
-			Receive0_delayCnt++;
-			if(Receive0_delayCnt > Pause_MAX)
+
+			if(Receive0_delayCnt != 0)
 			{
-				Receive0_delayFlg = 0;
-				Receive0_delayCnt = 0;			
+				Receive0_delayCnt--;
+			}
+			
+			if(Receive0_delayCnt == 0)
+			{
+
+				Receive0_delayCnt = Delay_MAX;			
 				
 				switch(CH_NUM)
 				{
 					case CH_1:
 						Uart1TXPauseBuff[Write1Pause] = Write1Data;
-						Write1Pause = (++Write1Pause) % PauseData_MAX;
+
+						Write1Pause = (++Write1Pause) & (PauseData_MAX-1);
+
 					  if(!uart1_TX_flag)
 						{
 							set_SCON_1_TI_1;
 						}
+						
 					break;
 					
 					case CH_2:
 						Uart2TXPauseBuff[Write2Pause] = Write2Data;
-						Write2Pause = (++Write2Pause) % PauseData_MAX;
+
+						Write2Pause = (++Write2Pause) & (PauseData_MAX-1);
+
 						set_SC0IE_TBEIEN;
 					break;
 					
 					case CH_3:
 						Uart3TXPauseBuff[Write3Pause] = Write3Data;
-						Write3Pause = (++Write3Pause) % PauseData_MAX;
+						Write3Pause = (++Write3Pause) & (PauseData_MAX-1);
 						set_SC1IE_TBEIEN;
 					break;
 					
 					case CH_4:
 						Uart4TXPauseBuff[Write4Pause] = Write4Data;
-						Write4Pause = (++Write4Pause) % PauseData_MAX;
+						Write4Pause = (++Write4Pause) & (PauseData_MAX-1);
 						set_SC2IE_TBEIEN;
 					break;
 				}
 				SFRS = 0;
 				FirstData_flg = 1;
+
 			}
+			
 		}
 		
-		if(Pause1Flg)
+		if(Pause1Cnt < Pause_MAX)
 		{
-			Pause1Cnt++;
-			if(Pause1Cnt>Pause_MAX) //500us x 4 = 2ms
-			{
-				Pause1Cnt = 0;
-				Pause1Flg = 0;
 
+			if(Pause1Cnt != 0)
+			{
+				Pause1Cnt--;
+			}
+			
+			if(Pause1Cnt == 0) //500us x 4 = 2ms
+			{
+			
+				Pause1Cnt = Pause_MAX;
+				
 				if(!uart1_TX_flag)	
 				{
 					set_SCON_1_TI_1;
 				}
+
 			}
+			
 		}
 
-		if(Pause2Flg)
+		if(Pause2Cnt < Pause_MAX)
 		{
-			Pause2Cnt++;
-			if(Pause2Cnt>Pause_MAX) //500us x 4 = 2ms
+			if(Pause2Cnt != 0)
 			{
-				Pause2Cnt = 0;
-				Pause2Flg = 0;
+				Pause2Cnt--;
+			}
+			
+			if(Pause2Cnt == 0) //500us x 4 = 2ms
+			{
+
+				Pause2Cnt = Pause_MAX;
 		
 				set_SC0IE_TBEIEN;
 				SFRS = 0;
+	
 			}
 		}		
 
-		if(Pause3Flg)
+		if(Pause3Cnt < Pause_MAX)
 		{
-			Pause3Cnt++;
-			if(Pause3Cnt>Pause_MAX) //500us x 4 = 2ms
+			if(Pause3Cnt != 0)
 			{
-				Pause3Cnt = 0;
-				Pause3Flg = 0;
+				Pause3Cnt--;
+			}
+			
+			if(Pause3Cnt == 0)//500us x 4 = 2ms
+			{
+				
+				Pause3Cnt = Pause_MAX;
+
 				set_SC1IE_TBEIEN;
 				SFRS = 0;
+				
 			}
 		}
 
-		if(Pause4Flg)
+		if(Pause4Cnt < Pause_MAX)
 		{
-			Pause4Cnt++;
-			if(Pause4Cnt>Pause_MAX) //500us x 4 = 2ms
+			if(Pause4Cnt != 0)
 			{
-				Pause4Cnt = 0;
-				Pause4Flg = 0;
+				Pause4Cnt--;
+			}
+			
+			if(Pause4Cnt == 0) //500us x 4 = 2ms
+			{
+				
+				Pause4Cnt = Pause_MAX;
+
 				set_SC2IE_TBEIEN;
 				SFRS = 0;
+
 			}
 		}
 
-		if(Receive1_delayFlg) 
+		if(Receive1_delayCnt < Delay_MAX)
 		{
 
-			Receive1_delayCnt++;
-			if(Receive1_delayCnt > Delay_MAX)
+			if(Receive1_delayCnt != 0)
 			{
-				Receive1_delayCnt = 0;
+				Receive1_delayCnt--;
+			}
+
+			if(Receive1_delayCnt == 0)
+			{
 				
-				if(!ReadNFull_flg)
+				if(SpecialCH_flg && (!ReadSFull_flg))
 				{
-					Receive1_delayFlg = 0;
+
+					Receive1_delayCnt = Delay_MAX;
+					if(((PosiWriteData == PosiReadData)&&(UartNBuff[PosiReadData][0] == 0)) && ((TopWriteData == TopReadData)&&(UartSBuff[TopReadData] == 0)))//First Data?
+					{
+						set_SCON_TI;
+					}
+
+					UartSBuff[TopWriteData] = RX1Length;
+					
+					TopWriteData = (++TopWriteData) & (UartSData_MAX-1);
+					
+					if(TopWriteData == TopReadData) //ReadSbuff Full?
+					{
+						ReadSFull_flg = 1;
+						UART0_Blocking_LedON;
+					}
+
+					RX1Length = 0;
+			
+				}
+				else if((!SpecialCH_flg) &&(!ReadNFull_flg))
+				{
+					Receive1_delayCnt = Delay_MAX;
 					if(((PosiWriteData == PosiReadData)&&(UartNBuff[PosiReadData][0] == 0)) && ((TopWriteData == TopReadData)&&(UartSBuff[TopReadData] == 0)))//First Data?
 					{
 						set_SCON_TI;
@@ -155,28 +217,33 @@ void Timer0_ISR (void) interrupt 1  //interrupt address is 0x000B  /* 500us Time
 					UartNBuff[PosiWriteData][0] = UART_1; 
 					UartNBuff[PosiWriteData][1] = RX1Length;
 					
-					PosiWriteData = (++PosiWriteData) % UartNData_MAX;
+					PosiWriteData = (++PosiWriteData) & (UartNData_MAX -1);
 					
 					if(PosiWriteData == PosiReadData) //ReadNbuff Full?
 					{
 						ReadNFull_flg = 1;
+						UART0_Blocking_LedON;
 					}
 					RX1Length = 0;
-				}
-				
+
+				}		
+						
 			}
 		}	
 
-		if(Receive2_delayFlg) 
+		if(Receive2_delayCnt < Delay_MAX)
 		{
-			Receive2_delayCnt++;
-			if(Receive2_delayCnt > Delay_MAX)
+			if(Receive2_delayCnt != 0)
 			{
-				Receive2_delayCnt = 0;
+				Receive2_delayCnt--;
+			}
 
+			if(Receive2_delayCnt == 0)
+			{
+				
 				if(!ReadNFull_flg)
 				{
-					Receive2_delayFlg = 0;
+					Receive2_delayCnt = Delay_MAX;
 					if(((PosiWriteData == PosiReadData)&&(UartNBuff[PosiReadData][0] == 0)) && ((TopWriteData == TopReadData)&&(UartSBuff[TopReadData] == 0)))//First Data?
 					{
 						set_SCON_TI;
@@ -184,29 +251,34 @@ void Timer0_ISR (void) interrupt 1  //interrupt address is 0x000B  /* 500us Time
 					
 					UartNBuff[PosiWriteData][0] = UART_2; 
 					UartNBuff[PosiWriteData][1] = RX2Length;
-					
-					PosiWriteData = (++PosiWriteData) % UartNData_MAX;
-					
+
+					PosiWriteData = (++PosiWriteData) & (UartNData_MAX -1);
+										
 					if(PosiWriteData == PosiReadData) //ReadNbuff Full?
 					{
 						ReadNFull_flg = 1;
+						UART0_Blocking_LedON;
 					}
 					RX2Length = 0;	
 				}
-							
+
 			}
 		}
 
-		if(Receive3_delayFlg) 
+		if(Receive3_delayCnt < Delay_MAX)
 		{
-			Receive3_delayCnt++;
-			if(Receive3_delayCnt > Delay_MAX)
-			{
-				Receive3_delayCnt = 0;
 
+			if(Receive3_delayCnt != 0)
+			{
+				Receive3_delayCnt--;
+			}
+
+			if(Receive3_delayCnt == 0)
+			{
 				if(!ReadNFull_flg)
 				{
-					Receive3_delayFlg = 0;
+
+					Receive3_delayCnt = Delay_MAX;
 					if(((PosiWriteData == PosiReadData)&&(UartNBuff[PosiReadData][0] == 0)) && ((TopWriteData == TopReadData)&&(UartSBuff[TopReadData] == 0))) //First Data?
 					{
 						set_SCON_TI;
@@ -214,48 +286,35 @@ void Timer0_ISR (void) interrupt 1  //interrupt address is 0x000B  /* 500us Time
 					
 					UartNBuff[PosiWriteData][0] = UART_3; 
 					UartNBuff[PosiWriteData][1] = RX3Length;
-
-					PosiWriteData = (++PosiWriteData) % UartNData_MAX;
-					
+	
+					PosiWriteData = (++PosiWriteData) & (UartNData_MAX -1);
+									
 					if(PosiWriteData == PosiReadData) //ReadNbuff Full?
 					{
 						ReadNFull_flg = 1;
+						UART0_Blocking_LedON;
 					}
 					RX3Length = 0;
 				}
-								
+
 			}
 		}
 
-		if(Receive4_delayFlg) 
+		if(Receive4_delayCnt < Delay_MAX)
 		{
-			Receive4_delayCnt++;
-			if(Receive4_delayCnt > Delay_MAX)
+
+			if(Receive4_delayCnt != 0)
 			{
-				Receive4_delayCnt = 0;
-				if(!ReadSFull_flg)
-				{
-					Receive4_delayFlg = 0;
-					if(((TopWriteData == TopReadData)&&(UartSBuff[TopReadData] == 0))&&((PosiWriteData == PosiReadData)&&(UartNBuff[PosiReadData][0] == 0))) //First Data?
-					{
-						set_SCON_TI;
-					} 
+				Receive4_delayCnt--;
+			}
+			
+			if(Receive4_delayCnt == 0)
+			{
 
-					UartSBuff[TopWriteData] = RX4Length;
-
-					TopWriteData = (++TopWriteData) % UartSData_MAX;
-					
-					if(TopWriteData == TopReadData) //ReadSbuff Full?
-					{
-						ReadSFull_flg = 1;
-					}
-					RX4Length = 0;	
-				}				
-				
-/* //original
 				if(!ReadNFull_flg)
 				{
-					Receive4_delayFlg = 0;
+
+					Receive4_delayCnt = Delay_MAX;
 					if((PosiWriteData == PosiReadData)&&(UartNBuff[PosiReadData][0] == 0))//First Data?
 					{
 						set_SCON_TI;
@@ -264,37 +323,44 @@ void Timer0_ISR (void) interrupt 1  //interrupt address is 0x000B  /* 500us Time
 					UartNBuff[PosiWriteData][0] = UART_4; 
 					UartNBuff[PosiWriteData][1] = RX4Length;
 
-					PosiWriteData = (++PosiWriteData) % UartNData_MAX;
+					PosiWriteData = (++PosiWriteData) & (UartNData_MAX -1);
 					
 					if(PosiWriteData == PosiReadData) //ReadNbuff Full?
 					{
 						ReadNFull_flg = 1;
+						UART0_Blocking_LedON;
 					}
 					RX4Length = 0;	
 				}
-*/					
+
 			}
 		}
 		
-		if(Pause0Flg)
+		if(Pause0Cnt < Pause_MAX)
 		{
-			Pause0Cnt++;
-				
-			if(Pause0Cnt>Pause_MAX) //500us x 4 = 2ms
+			if(Pause0Cnt != 0)
 			{
-				Pause0Cnt = 0;
-				Pause0Flg = 0;
+				Pause0Cnt--;	
+			}
+
+			if(Pause0Cnt == 0) //500us x 4 = 2ms
+			{
+
+				Pause0Cnt = Pause_MAX;
 				
 				if((ReadNFull_flg)||(PosiReadData != PosiWriteData)||(ReadSFull_flg)||(TopReadData != TopWriteData))
 				{
 					set_SCON_TI;
-				}					
+				}		
+
 			}
+			
 		}		
 
 		Channel_Scan();
-		
+	
     _pop_(SFRS);
+
 }
 
 
